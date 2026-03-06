@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Güneş - Mamul Stok Raporu</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f4f6fa; padding: 16px; }
+  .container { max-width: 1150px; margin: 0 auto; }
+  .header { background: linear-gradient(135deg,#1a3a5c,#2e6da4); border-radius:10px; padding:14px 22px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; }
+  .header h1 { color:#fff; font-size:17px; letter-spacing:1px; }
+  .header small { color:#aed4f7; font-size:11px; }
+  .header .total-badge { color:#ffd700; font-weight:800; font-size:14px; background:rgba(255,255,255,0.12); border-radius:6px; padding:6px 14px; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .tab-btn { padding:7px 16px; border-radius:6px; border:none; cursor:pointer; font-weight:600; font-size:12px; background:#dde6f0; color:#1a3a5c; transition:all 0.2s; }
+  .tab-btn.active { color:#fff; }
+  .tab-btn[data-tab="musteri"].active { background:#1a3a5c; }
+  .tab-btn[data-tab="depo"].active { background:#2e5b2e; }
+  .tab-btn[data-tab="malcikis"].active { background:#7b3f00; }
+  .tab-btn[data-tab="ozet"].active { background:#4a1a6c; }
+  .panel { display:none; }
+  .panel.active { display:block; }
+  .card { background:#fff; border-radius:8px; box-shadow:0 2px 8px #c5d3e0; overflow:auto; margin-bottom:14px; }
+  .card-header { color:#fff; padding:10px 18px; font-weight:700; font-size:13px; }
+  .card-header.blue { background:#1a3a5c; border-radius:8px 8px 0 0; }
+  .card-header.green { background:#2e5b2e; border-radius:8px 8px 0 0; }
+  .card-header.brown { background:#7b3f00; border-radius:8px 8px 0 0; }
+  .card-header.purple { background:#4a1a6c; border-radius:8px 8px 0 0; }
+  table { width:100%; border-collapse:collapse; }
+  th { padding:7px 6px; text-align:center; font-size:11px; font-weight:700; text-transform:uppercase; border:1px solid #ccc; background:#eef2f7; white-space:nowrap; }
+  th.kayseri { background:#d4edda; }
+  th.left { text-align:left; }
+  td { padding:4px 5px; font-size:11px; text-align:center; border:1px solid #e0e0e0; }
+  td.left { text-align:left; padding:4px 8px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  td.mono { font-family:monospace; font-size:10px; text-align:left; padding:4px 8px; }
+  tr:nth-child(even) td { background:#f9fbfd; }
+  tr:nth-child(even) td.kayseri-cell { background:#f0faf0; }
+  td.kayseri-cell { background:#f0faf0; }
+  td.kayseri-val { background:#d4edda !important; }
+  td.total-col { background:#fffbea; font-weight:700; }
+  tr.footer-row td { background:#dde6f0 !important; font-weight:700; }
+  tr.footer-row td.kayseri-cell { background:#a8d5b0 !important; }
+  tr.footer-row td.total-col { background:#ffe082 !important; font-weight:800; }
+  tr.grand-row td { background:#1a3a5c !important; color:#fff; font-weight:700; font-size:13px; border-top:2px solid #888; }
+  tr.grand-row td.kayseri-cell { background:#2e6e2e !important; }
+  tr.grand-row td.total-col { background:#ffd700 !important; color:#1a3a5c; font-size:14px; font-weight:800; }
+  .sinif { font-weight:700; font-size:10px; }
+  .sinif-a { color:#1a7a1a; }
+  .sinif-b { color:#b87a00; }
+  .sinif-s { color:#c00; }
+  .sinif-other { color:#888; }
+  .kayseri-box { background:#e8fce8; border:2px solid #4caf50; border-radius:8px; padding:14px 20px; }
+  .kayseri-box h3 { color:#1a5c1a; font-size:14px; margin-bottom:10px; }
+  .kayseri-cards { display:flex; gap:12px; flex-wrap:wrap; }
+  .kayseri-card { background:#fff; border-radius:6px; padding:8px 14px; min-width:150px; box-shadow:0 1px 4px #b0d8b0; }
+  .kayseri-card .kc-model { font-size:10px; font-family:monospace; color:#555; }
+  .kayseri-card .kc-sinif { font-size:10px; font-weight:700; }
+  .kayseri-card .kc-val { font-size:16px; font-weight:800; color:#1a5c1a; }
+  .kayseri-total { margin-top:12px; border-top:1px solid #a5d6a7; padding-top:10px; text-align:right; font-weight:700; color:#1a5c1a; font-size:14px; }
+  .kayseri-total span { font-size:18px; }
+  input[type=number] { width:70px; text-align:center; border:1px solid #ddd; border-radius:3px; padding:1px 2px; font-size:11px; background:#fafafa; }
+  input[type=number]:focus { outline:1px solid #2e6da4; background:#fff; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>SMART GÜNEŞ TEKNOLOJİLERİ</h1>
+      <small>Mamul Stok Raporu — 04.03.2026</small>
+    </div>
+    <div class="total-badge" id="genelToplam">GENEL TOPLAM: — adet</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="musteri" onclick="switchTab('musteri')">Müşteri Stok</button>
+    <button class="tab-btn" data-tab="depo" onclick="switchTab('depo')">Depo Stok</button>
+    <button class="tab-btn" data-tab="malcikis" onclick="switchTab('malcikis')">Mal Çıkışı Yapılmış</button>
+    <button class="tab-btn" data-tab="ozet" onclick="switchTab('ozet')">📊 Özet</button>
+  </div>
+
+  <!-- MÜŞTERİ STOK -->
+  <div class="panel active" id="panel-musteri">
+    <div class="card">
+      <div class="card-header blue">MÜŞTERİ STOKLARI</div>
+      <table id="tbl-musteri">
+        <thead>
+          <tr>
+            <th class="left">Müşteri</th>
+            <th class="left">Malzeme</th>
+            <th>Sınıf</th>
+            <th>Aliağa</th>
+            <th>Gebze</th>
+            <th>Urfa</th>
+            <th>Aksaray</th>
+            <th class="kayseri">Kayseri</th>
+            <th>Toplam</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-musteri"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DEPO STOK -->
+  <div class="panel" id="panel-depo">
+    <div class="card">
+      <div class="card-header green">DEPO STOKLARI (FASON MAMUL DAHİL)</div>
+      <table id="tbl-depo">
+        <thead>
+          <tr>
+            <th class="left">Malzeme</th>
+            <th>Sınıf</th>
+            <th>Aliağa</th>
+            <th>Gebze</th>
+            <th>Urfa</th>
+            <th>Aksaray</th>
+            <th class="kayseri">Kayseri</th>
+            <th>Toplam</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-depo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MAL ÇIKIŞI -->
+  <div class="panel" id="panel-malcikis">
+    <div class="card">
+      <div class="card-header brown">MAL ÇIKIŞI YAPILMIŞ STOKLAR</div>
+      <table>
+        <thead>
+          <tr>
+            <th class="left">Müşteri</th>
+            <th class="left">Malzeme</th>
+            <th>Sınıf</th>
+            <th>Aliağa</th>
+            <th>Gebze</th>
+            <th>Urfa</th>
+            <th>Aksaray</th>
+            <th class="kayseri">Kayseri</th>
+            <th>Toplam</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-malcikis"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ÖZET -->
+  <div class="panel" id="panel-ozet">
+    <div class="card">
+      <div class="card-header purple">ÖZET — LOKASYONLARA GÖRE DAĞILIM</div>
+      <table>
+        <thead>
+          <tr>
+            <th class="left">Stok Türü</th>
+            <th>Aliağa</th>
+            <th>Gebze</th>
+            <th>Urfa</th>
+            <th>Aksaray</th>
+            <th class="kayseri">Kayseri</th>
+            <th>Toplam</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-ozet"></tbody>
+      </table>
+    </div>
+    <div class="kayseri-box">
+      <h3>🏭 KAYSERİ FASON MAMUL DETAYI</h3>
+      <div class="kayseri-cards">
+        <div class="kayseri-card"><div class="kc-model">PS620L8GFH-22/WNH</div><div class="kc-sinif sinif-a">Sınıf: A</div><div class="kc-val">22.560</div></div>
+        <div class="kayseri-card"><div class="kc-model">PS620L8GFH-22/WNH</div><div class="kc-sinif sinif-b">Sınıf: B</div><div class="kc-val">3.263</div></div>
+        <div class="kayseri-card"><div class="kc-model">PS620L8GFH-22/WNH</div><div class="kc-sinif sinif-other">Sınıf: NO DATA</div><div class="kc-val">12</div></div>
+        <div class="kayseri-card"><div class="kc-model">PS620L8GFH-22/WNH</div><div class="kc-sinif sinif-s">Sınıf: S</div><div class="kc-val">609</div></div>
+        <div class="kayseri-card"><div class="kc-model">PS620L8GFH-22/WNH</div><div class="kc-sinif sinif-other">Sınıflandırılmadı</div><div class="kc-val">675</div></div>
+        <div class="kayseri-card"><div class="kc-model">PS625L8GFH-22/WNH</div><div class="kc-sinif sinif-a">Sınıf: A</div><div class="kc-val">3.145</div></div>
+      </div>
+      <div class="kayseri-total">Kayseri Toplam: <span>30.264</span> adet</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cols = ["aliaga","gebze","urfa","aksaray","kayseri"];
+const fmt = n => n ? n.toLocaleString("tr-TR") : "-";
+const sinifClass = s => s==="A"||s==="A+"?"sinif-a":s==="B"?"sinif-b":s==="S"?"sinif-s":"sinif-other";
+
+const musteriData = [
+  {m:"Aksa Yenilenebilir Enerji Üretim A.",ml:"PS550M8H-24/TH",s:"A",aliaga:44,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"Aksun Yenilenebilir Enerji Mühendis",ml:"PS590M8GFH-24/TNH",s:"A",aliaga:0,gebze:0,urfa:193,aksaray:0,kayseri:0},
+  {m:"Arya Yenilenebilir Enerji A.Ş.",ml:"PS550M8H-24/TH",s:"A",aliaga:2515,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"Asunim Yenilenebilir Enerji A.Ş.",ml:"PS595M8GFH-24/TNH",s:"A",aliaga:2,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"Asya Ges Enerji Üretim San.Tic.Ltd.",ml:"PS560M8H-24/TH",s:"B",aliaga:0,gebze:0,urfa:3108,aksaray:0,kayseri:0},
+  {m:"Borusan Enbw Enerji Yatırımları",ml:"PS555M8H-24/TH",s:"A",aliaga:31,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"Crk Enerji Elektrik Pro.Taah.ve Müh",ml:"PS455M5H-24/TH",s:"A",aliaga:0,gebze:74,urfa:0,aksaray:0,kayseri:0},
+  {m:"Egesa Elektrik İnşaat Enerji Üretim",ml:"PS545M8H-24/TH",s:"A",aliaga:2034,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"Erikoğlu SunSystem Enerji San. Tic.",ml:"PS595M8GFH-24/TNH",s:"A",aliaga:148,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"Gerilim Yenilenebilir Enerji Ve",ml:"PS550M8H-24/TH",s:"A",aliaga:31,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"Güçyetmez Elektrik İnşaat Turizm Ya",ml:"PS550M8H-24/TH",s:"B",aliaga:155,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"Hes Hacılar Elektrik Sanayi ve Tica",ml:"PS550M8H-24/TH",s:"A",aliaga:480,gebze:0,urfa:2900,aksaray:0,kayseri:0},
+  {m:"Pv Solutions Mühendislik Dış Ticare",ml:"PS550M8H-24/TH",s:"B",aliaga:2356,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"RHG Enertürk Enerji Üretim ve Ticar",ml:"PS550M8H-24/TH",s:"A",aliaga:0,gebze:0,urfa:6138,aksaray:0,kayseri:0},
+  {m:"Solargy Danışmanlık Mühendislik Ene",ml:"PS585M8GFH-24/TNH",s:"A",aliaga:0,gebze:0,urfa:0,aksaray:555,kayseri:0},
+  {m:"Yomtov Enerji Mühendislik İnşaat",ml:"PS550M8H-24/TH",s:"B",aliaga:682,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {m:"Zes Solar Enerji Tedarik ve Ticaret",ml:"PS550M8H-24/TH",s:"A",aliaga:21,gebze:0,urfa:0,aksaray:0,kayseri:0},
+];
+
+const depoData = [
+  {ml:"PS455M5H-24/TH",s:"A",aliaga:0,gebze:0,urfa:1084,aksaray:0,kayseri:0},
+  {ml:"PS545M6H-24/TH",s:"A",aliaga:48,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS545M8H-24/TH",s:"A",aliaga:93,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS550M6H-24/TH",s:"A",aliaga:109,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS550M6H-24/TH",s:"B",aliaga:93,gebze:0,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS550M8H-24/TH",s:"A",aliaga:311,gebze:1,urfa:1061,aksaray:0,kayseri:0},
+  {ml:"PS550M8H-24/TH",s:"B",aliaga:5437,gebze:8,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS550M8H-24/TH",s:"S",aliaga:247,gebze:0,urfa:1,aksaray:0,kayseri:0},
+  {ml:"PS555M8H-24/TH",s:"A",aliaga:279,gebze:0,urfa:155,aksaray:0,kayseri:0},
+  {ml:"PS595M8GFH-24/TNH",s:"A",aliaga:7,gebze:18,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS625L8GFH-22/WNH",s:"A",aliaga:0,gebze:11231,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS620L8GFH-22/WNH",s:"A",aliaga:0,gebze:2059,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS620L8GFH-22/WNH",s:"B",aliaga:0,gebze:1850,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS620L8GFH-22/WNH",s:"S",aliaga:0,gebze:74,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS630L8GFH-22/WNH",s:"A",aliaga:0,gebze:1087,urfa:0,aksaray:0,kayseri:0},
+  {ml:"PS620L8GFH-22/WNH",s:"A",aliaga:0,gebze:0,urfa:0,aksaray:0,kayseri:22560},
+  {ml:"PS620L8GFH-22/WNH",s:"B",aliaga:0,gebze:0,urfa:0,aksaray:0,kayseri:3263},
+  {ml:"PS620L8GFH-22/WNH",s:"NO DATA",aliaga:0,gebze:0,urfa:0,aksaray:0,kayseri:12},
+  {ml:"PS620L8GFH-22/WNH",s:"S",aliaga:0,gebze:0,urfa:0,aksaray:0,kayseri:609},
+  {ml:"PS620L8GFH-22/WNH",s:"Sınıflandırılmadı",aliaga:0,gebze:0,urfa:0,aksaray:0,kayseri:675},
+  {ml:"PS625L8GFH-22/WNH",s:"A",aliaga:0,gebze:0,urfa:0,aksaray:0,kayseri:3145},
+];
+
+const malcikisData = [
+  {m:"Afa Enerji İnş.Lojistik Ltd.Şti",ml:"PS395M1H-24/T",s:"A",aliaga:0,gebze:0,urfa:26,aksaray:0,kayseri:0},
+  {m:"Afa Enerji İnş.Lojistik Ltd.Şti",ml:"PS550M6H-24/TH",s:"A",aliaga:0,gebze:0,urfa:1860,aksaray:186,kayseri:0},
+  {m:"Afa Enerji İnş.Lojistik Ltd.Şti",ml:"PS550M8H-24/TH",s:"A",aliaga:0,gebze:0,urfa:0,aksaray:2387,kayseri:0},
+  {m:"Afa Enerji İnş.Lojistik Ltd.Şti",ml:"PS585M8GFH-24/TNH",s:"A",aliaga:0,gebze:8177,urfa:0,aksaray:0,kayseri:0},
+  {m:"Afa Enerji İnş.Lojistik Ltd.Şti",ml:"PS595M8GFH-24/TNH",s:"A",aliaga:0,gebze:1850,urfa:0,aksaray:0,kayseri:0},
+  {m:"Arya Yenilenebilir Enerji",ml:"PS560M8H-24/TH",s:"A",aliaga:0,gebze:0,urfa:21000,aksaray:0,kayseri:0},
+  {m:"Arya Yenilenebilir Enerji",ml:"PS545M8H-24/TH",s:"A",aliaga:0,gebze:0,urfa:9393,aksaray:0,kayseri:0},
+  {m:"Hes Hacılar Elektrik Sanayi ve Tica",ml:"PS550M8H-24/TH",s:"A",aliaga:0,gebze:0,urfa:828,aksaray:0,kayseri:0},
+  {m:"Astor Elazığ",ml:"PS550M8H-24/TH",s:"A",aliaga:0,gebze:0,urfa:2046,aksaray:0,kayseri:0},
+  {m:"Sunera",ml:"PS595M8GFH-24/TNH",s:"A",aliaga:0,gebze:185,urfa:0,aksaray:0,kayseri:0},
+  {m:"Stok",ml:"PS585M8GFH-24/TNH",s:"A",aliaga:0,gebze:37,urfa:0,aksaray:0,kayseri:0},
+  {m:"Stok",ml:"PS550M6H-24/TH",s:"A",aliaga:0,gebze:0,urfa:1116,aksaray:0,kayseri:0},
+];
+
+// State
+const state = {
+  musteri: musteriData.map(r=>({...r})),
+  depo: depoData.map(r=>({...r})),
+  malcikis: malcikisData.map(r=>({...r}))
+};
+
+function rowTotal(r){ return cols.reduce((a,c)=>a+(r[c]||0),0); }
+function colTotals(arr){ return cols.reduce((a,c)=>({...a,[c]:arr.reduce((s,r)=>s+(r[c]||0),0)}),{}); }
+function sumObj(obj){ return Object.values(obj).reduce((a,b)=>a+b,0); }
+
+function renderMusteri(){
+  const tbody = document.getElementById("tbody-musteri");
+  tbody.innerHTML = "";
+  state.musteri.forEach((row,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="left" title="${row.m}">${row.m}</td>
+      <td class="mono">${row.ml}</td>
+      <td><span class="sinif ${sinifClass(row.s)}">${row.s}</span></td>
+      ${cols.map(c=>`<td class="${c==='kayseri'?(row[c]>0?'kayseri-val':'kayseri-cell'):''}" >
+        <input type="number" value="${row[c]||''}" min="0" data-tab="musteri" data-idx="${i}" data-col="${c}" onchange="updateVal(this)">
+      </td>`).join("")}
+      <td class="total-col">${fmt(rowTotal(row))}</td>`;
+    tbody.appendChild(tr);
+  });
+  const tots = colTotals(state.musteri);
+  const tfr = document.createElement("tr");
+  tfr.className = "footer-row";
+  tfr.innerHTML = `<td class="left" colspan="3">MÜŞTERİ STOK TOPLAM</td>
+    ${cols.map(c=>`<td class="${c==='kayseri'?'kayseri-cell':''}">${fmt(tots[c])}</td>`).join("")}
+    <td class="total-col">${fmt(sumObj(tots))}</td>`;
+  tbody.appendChild(tfr);
+}
+
+function renderDepo(){
+  const tbody = document.getElementById("tbody-depo");
+  tbody.innerHTML = "";
+  state.depo.forEach((row,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="mono">${row.ml}</td>
+      <td><span class="sinif ${sinifClass(row.s)}">${row.s}</span></td>
+      ${cols.map(c=>`<td class="${c==='kayseri'?(row[c]>0?'kayseri-val':'kayseri-cell'):''}">
+        <input type="number" value="${row[c]||''}" min="0" data-tab="depo" data-idx="${i}" data-col="${c}" onchange="updateVal(this)">
+      </td>`).join("")}
+      <td class="total-col">${fmt(rowTotal(row))}</td>`;
+    tbody.appendChild(tr);
+  });
+  const tots = colTotals(state.depo);
+  const tfr = document.createElement("tr");
+  tfr.className = "footer-row";
+  tfr.innerHTML = `<td class="left" colspan="2">DEPO STOK TOPLAM</td>
+    ${cols.map(c=>`<td class="${c==='kayseri'?'kayseri-cell':''}">${fmt(tots[c])}</td>`).join("")}
+    <td class="total-col">${fmt(sumObj(tots))}</td>`;
+  tbody.appendChild(tfr);
+}
+
+function renderMalcikis(){
+  const tbody = document.getElementById("tbody-malcikis");
+  tbody.innerHTML = "";
+  state.malcikis.forEach((row,i)=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="left" title="${row.m}">${row.m}</td>
+      <td class="mono">${row.ml}</td>
+      <td><span class="sinif ${sinifClass(row.s)}">${row.s}</span></td>
+      ${cols.map(c=>`<td class="${c==='kayseri'?(row[c]>0?'kayseri-val':'kayseri-cell'):''}">
+        <input type="number" value="${row[c]||''}" min="0" data-tab="malcikis" data-idx="${i}" data-col="${c}" onchange="updateVal(this)">
+      </td>`).join("")}
+      <td class="total-col">${fmt(rowTotal(row))}</td>`;
+    tbody.appendChild(tr);
+  });
+  const tots = colTotals(state.malcikis);
+  const tfr = document.createElement("tr");
+  tfr.className = "footer-row";
+  tfr.innerHTML = `<td class="left" colspan="3">MAL ÇIKIŞI TOPLAM</td>
+    ${cols.map(c=>`<td class="${c==='kayseri'?'kayseri-cell':''}">${fmt(tots[c])}</td>`).join("")}
+    <td class="total-col">${fmt(sumObj(tots))}</td>`;
+  tbody.appendChild(tfr);
+}
+
+function renderOzet(){
+  const mt = colTotals(state.musteri);
+  const dt = colTotals(state.depo);
+  const ct = colTotals(state.malcikis);
+  const gt = cols.reduce((a,c)=>({...a,[c]:(mt[c]||0)+(dt[c]||0)+(ct[c]||0)}),{});
+  const tbody = document.getElementById("tbody-ozet");
+  tbody.innerHTML = "";
+  [
+    {label:"Müşteri Stok", data:mt, bg:"#f0f6ff"},
+    {label:"Depo Stok (Fason Dahil)", data:dt, bg:"#f0faf0"},
+    {label:"Mal Çıkışı Yapılmış", data:ct, bg:"#fff8f0"},
+  ].forEach(({label,data,bg})=>{
+    const tr = document.createElement("tr");
+    tr.style.background = bg;
+    tr.innerHTML = `<td class="left" style="font-weight:600">${label}</td>
+      ${cols.map(c=>`<td class="${c==='kayseri'?'kayseri-cell':''}">${fmt(data[c])}</td>`).join("")}
+      <td class="total-col">${fmt(sumObj(data))}</td>`;
+    tbody.appendChild(tr);
+  });
+  const gtr = document.createElement("tr");
+  gtr.className = "grand-row";
+  gtr.innerHTML = `<td class="left">GENEL TOPLAM</td>
+    ${cols.map(c=>`<td class="${c==='kayseri'?'kayseri-cell':''}">${fmt(gt[c])}</td>`).join("")}
+    <td class="total-col">${fmt(sumObj(gt))}</td>`;
+  tbody.appendChild(gtr);
+
+  document.getElementById("genelToplam").textContent = "GENEL TOPLAM: " + fmt(sumObj(gt)) + " adet";
+}
+
+function updateVal(el){
+  const {tab,idx,col} = el.dataset;
+  state[tab][idx][col] = parseInt(el.value)||0;
+  if(tab==="musteri") renderMusteri();
+  else if(tab==="depo") renderDepo();
+  else renderMalcikis();
+  renderOzet();
+}
+
+function switchTab(tab){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("panel-"+tab).classList.add("active");
+  document.querySelector(`[data-tab="${tab}"]`).classList.add("active");
+}
+
+// Init
+renderMusteri();
+renderDepo();
+renderMalcikis();
+renderOzet();
+</script>
+</body>
+</html>
